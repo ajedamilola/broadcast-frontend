@@ -6,7 +6,7 @@ import { FaRegMessage, FaRegBell } from "react-icons/fa6";
 import { MdClose } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { recentSearch } from "../constants";
-import { image1 } from "../assets";
+import { image1, logo } from "../assets";
 
 const Navbar = () => {
   const [focused, setFocused] = useState(false);
@@ -127,7 +127,7 @@ const Navbar = () => {
           <div className='hidden items-center gap-2 md:flex'>
             <div className='relative'>
               <img
-                src={image1}
+                src={logo}
                 alt='avatar'
                 className='size-[36px] rounded-full object-cover'
               />
