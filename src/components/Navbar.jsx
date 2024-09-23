@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { RiSearch2Line } from "react-icons/ri";
 import { FiHome } from "react-icons/fi";
 import { HiOutlineUserAdd, HiOutlineMoon } from "react-icons/hi";
@@ -6,12 +6,26 @@ import { FaRegMessage, FaRegBell } from "react-icons/fa6";
 import { MdClose } from "react-icons/md";
 import { motion, AnimatePresence } from "framer-motion";
 import { recentSearch } from "../constants";
-import { image1, logo } from "../assets";
+import { logo } from "../assets";
 
 const Navbar = () => {
   const [focused, setFocused] = useState(false);
   const [showSearchedResult, setShowSearchedResult] = useState(false);
   const [name, setName] = useState(localStorage.getItem("username"))
+
+  const askName = () => {
+    const newName = prompt("Please type in your new name(leave blank for unchanged)")
+    if (newName) {
+      setName(newName);
+      localStorage.setItem("username", newName)
+    }
+  }
+
+  useEffect(() => {
+    if (!localStorage.getItem("username")) {
+      askName();
+    }
+  }, [])
 
   return (
     <header className='bg-primary text-white'>
@@ -167,13 +181,7 @@ const Navbar = () => {
             </div>
           </div>
 
-          <div onClick={() => {
-            const newName = prompt("Please type in your new name(leave blank for unchanged)")
-            if (newName) {
-              setName(newName);
-              localStorage.setItem("username", newName)
-            }
-          }}>
+          <div onClick={askName}>
             <h3 className='text-[12px] font-semibold leading-[1.4]' >
               {name || "Anonymous"}
             </h3>

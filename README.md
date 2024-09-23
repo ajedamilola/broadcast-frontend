@@ -1,8 +1,12 @@
-# React + Vite
+# De-Broadcast
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+### Intro
 
-Currently, two official plugins are available:
+a decentralized public chat room. for everyone and not controlled by anyone
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Running
+
+1. npm install
+2. npm run dev
+
+Note: if you have deployed your own version of my contract, change the `messagingContractAddress` variable in the `src/constants/index.js` file
