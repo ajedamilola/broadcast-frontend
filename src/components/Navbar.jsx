@@ -11,15 +11,17 @@ import { image1, logo } from "../assets";
 const Navbar = () => {
   const [focused, setFocused] = useState(false);
   const [showSearchedResult, setShowSearchedResult] = useState(false);
+  const [name, setName] = useState(localStorage.getItem("username"))
 
   return (
     <header className='bg-primary text-white'>
+      {/* <small className="text-xs">The content of this top-bar is a teaser for our main hackathon project</small> */}
       <nav className='mx-auto flex items-center justify-between px-4 py-3'>
         <div className='flex items-center gap-5'>
           <h1 className='text-xl font-extrabold'>Dechat</h1>
 
           {/* search input */}
-          <div className='relative flex w-[200px] items-center justify-between rounded-md bg-[#3494cd] p-2'>
+          <div className='relative hidden w-[200px] items-center justify-between rounded-md bg-[#3494cd] p-2'>
             <div className='flex items-center gap-2'>
               <RiSearch2Line size={20} />
               <input
@@ -87,12 +89,12 @@ const Navbar = () => {
 
           <FiHome size={20} className='hidden lg:block' />
 
-          <div className='relative hidden lg:block'>
+          <div className='relative hidden lg:hidden'>
             <HiOutlineUserAdd size={20} />
           </div>
         </div>
 
-        <div className='flex items-center gap-5'>
+        <div className='hidden items-center gap-5 '>
           {/* posts */}
           <div className='hidden rounded-md bg-[#3494cd] p-2 text-sm font-medium lg:block'>
             <strong>326</strong> Total Posts
@@ -138,12 +140,44 @@ const Navbar = () => {
               </div>
             </div>
 
-            <div>
-              <h3 className='text-[12px] font-semibold leading-[1.4]'>
-                Mary Thompson
+            <div onClick={() => {
+              const newName = prompt("Please type in your new name(leave blank for unchanged)")
+              setName(newName);
+              localStorage.setItem("username", newName)
+            }}>
+              <h3 className='text-[12px] font-semibold leading-[1.4]' >
+                {name}
               </h3>
               <p className='text-[12px] leading-[1.1]'>active now</p>
             </div>
+          </div>
+        </div>
+        {/* account */}
+        <div className='hidden items-center gap-2 md:flex'>
+          <div className='relative'>
+            <img
+              src={logo}
+              alt='avatar'
+              className='size-[36px] rounded-full object-cover'
+            />
+
+            {/* active-icon */}
+            <div className='absolute -right-1 top-0 flex size-[13px] items-center justify-center rounded-full bg-white text-[10px] font-semibold'>
+              <div className='size-[7px] rounded-full bg-green-500'></div>
+            </div>
+          </div>
+
+          <div onClick={() => {
+            const newName = prompt("Please type in your new name(leave blank for unchanged)")
+            if (newName) {
+              setName(newName);
+              localStorage.setItem("username", newName)
+            }
+          }}>
+            <h3 className='text-[12px] font-semibold leading-[1.4]' >
+              {name || "Anonymous"}
+            </h3>
+            <p className='text-[12px] leading-[1.1]'>active now</p>
           </div>
         </div>
       </nav>
