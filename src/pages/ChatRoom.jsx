@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useState, useRef } from "react";
 import Navbar from "../components/Navbar";
 import { Contract } from "ethers";
 import { messagingABI, messagingContractAddress } from "../constants";
@@ -20,7 +20,7 @@ const ChatRoom = () => {
   const contract = new Contract(messagingContractAddress, messagingABI, ethersData?.signer)
   const [fetching, setFetching] = useState(false)
   const [sending, setSending] = useState(false)
-
+  const messagesEndRef = useRef(null)
 
   const [messages, setMessages] = useState([
     {
@@ -40,6 +40,9 @@ const ChatRoom = () => {
     },
   ]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -67,13 +70,13 @@ const ChatRoom = () => {
       const rawMessagesString = await contract.getRecentMessages()
       const rawMessages = JSON.parse(rawMessagesString)
       rawMessages.reverse()
-      console.log(rawMessages)
       setMessages(rawMessages.map(r => ({
         id: rawMessages.indexOf(r),
         text: r.content,
         sender: r.name,
         address: r.sender
       })))
+
     } catch (error) {
       console.log(error)
       Report.failure("Error", "Unable to get messages")
@@ -96,10 +99,9 @@ const ChatRoom = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       if (!silentFetch) {
-        console.log("Getting")
         await InitData();
       }
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [InitData, silentFetch]);
@@ -137,6 +139,7 @@ const ChatRoom = () => {
               </div>
             ))
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         <form onSubmit={handleSend} className='flex p-3'>
