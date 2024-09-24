@@ -1,9 +1,80 @@
+/* eslint-disable react/prop-types */
 import { useCallback, useContext, useEffect, useLayoutEffect, useState, useRef, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import { Contract } from "ethers";
 import { messagingABI, messagingContractAddress } from "../constants";
 import { AppContext } from "../AppContext";
 import { Report } from "notiflix";
+import Lottie from "lottie-react"
+import gift from "../lottie/gift.json";
+import gift_idle from "../lottie/gift_idle.json";
+
+const Message = ({ message, address, handleReact, handleReply, scrollToMessage, reactingStates }) => {
+  const [showGiftAnimation, setShowGiftAnimation] = useState(false);
+
+  const onReact = async () => {
+    await handleReact(message.id);
+    setShowGiftAnimation(true);
+    setTimeout(() => setShowGiftAnimation(false), 3000); // Adjust time based on your animation duration
+  };
+
+  return (
+    <div
+      className={`mb-8 ${message.address === address ? "text-right" : "text-left"}`}
+    >
+      {message.replying && (
+        <div
+          className="text-sm text-gray-500 mb-1 cursor-pointer hover:underline"
+          onClick={() => scrollToMessage(parseInt(message.replying))}
+        >
+          Replying to: <span className="font-semibold">{message.replyingText}</span>
+        </div>
+      )}
+      <div className="ms-auto">
+        <img
+          src={`https://api.dicebear.com/9.x/shapes/svg?seed=${message.sender}`}
+          alt={message.sender}
+          style={{ float: message.address != address ? "left" : "right" }}
+          className="w-8 h-8 rounded-full mx-2"
+        />
+      </div>
+      <div className="flex">
+        <div
+          className={`rounded-lg p-2 ${message.address === address
+            ? "bg-primary text-white ms-auto"
+            : "bg-white text-black"
+            }`}
+        >
+          {message.text}
+        </div>
+      </div>
+      <div className="mt-1 text-sm">
+        <button
+          onClick={onReact}
+          className={`inline-flex items-center rounded-full text-xs font-medium opacity-70 disabled:opacity-100 bg-yellow-200 text-yellow-800 hover:bg-yellow-200 disabled:cursor-not-allowed pl-2 pr-3`}
+          disabled={message.stars.includes(address) || reactingStates[message.id]}
+        >
+          {reactingStates[message.id] && (
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-yellow-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          )}
+
+          <Lottie
+            animationData={showGiftAnimation ? gift : gift_idle}
+            loop
+            style={{ width: 40, margin: "-4px 0px" }}
+          />
+          {message.stars.length}
+        </button>
+        <button onClick={() => handleReply(message.id)} className="text-blue-500 hover:text-blue-600 ml-2">
+          Reply
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const ChatRoom = () => {
   const [newMessage, setNewMessage] = useState("");
@@ -14,6 +85,7 @@ const ChatRoom = () => {
   const [replying, setReplying] = useState("")
   const messagesEndRef = useRef(null)
   const messageRefs = useRef({})
+  const [reactingStates, setReactingStates] = useState({})
 
   const [messages, setMessages] = useState([
     {
@@ -56,13 +128,17 @@ const ChatRoom = () => {
     try {
       const message = messages.find(m => m.id == messageId);
       if (message.stars.includes(address)) return
-      await contract.reactToMessage(messageId);
+      setReactingStates(prev => ({ ...prev, [messageId]: true }));
+      const details = await contract.reactToMessage(messageId);
+      await details.wait()
       setMessages(messages.map(msg =>
         msg.id === messageId ? { ...msg, stars: [...msg.stars, 1] } : msg
       ));
     } catch (error) {
       console.log(error);
       Report.failure("Unable to react to message");
+    } finally {
+      setReactingStates(prev => ({ ...prev, [messageId]: false }));
     }
   };
 
@@ -111,6 +187,7 @@ const ChatRoom = () => {
   }, [InitData, ethersData])
   const [silentFetch, setSilentFetch] = useState(false)
 
+
   useEffect(() => {
     const interval = setInterval(async () => {
       if (!silentFetch) {
@@ -135,40 +212,15 @@ const ChatRoom = () => {
             </div>
           ) : (
             messages.map((message) => (
-              <div
+              <Message
                 key={message.id}
-                ref={el => messageRefs.current[message.id] = el}
-                className={`mb-4 ${message.address === address ? "text-right" : "text-left"
-                  }`}
-              >
-                {message.replying && (
-                  <div
-                    className="text-sm text-gray-500 mb-1 cursor-pointer hover:underline"
-                    onClick={() => scrollToMessage(parseInt(message.replying))}
-                  >
-                    Replying to: <b>{messages.find(m => m.id == message.replying)?.text.substring(0, 50)}...</b>
-                  </div>
-                )}
-                {message.address !== address && (
-                  <div className="text-sm text-gray-500 mb-1">{message.sender}</div>
-                )}
-                <div
-                  className={`inline-block rounded-lg p-2 ${message.address === address
-                    ? "bg-primary text-white"
-                    : "bg-white text-black"
-                    }`}
-                >
-                  {message.text}
-                </div>
-                <div className="mt-1 text-sm">
-                  <button onClick={() => handleReact(message.id)} className="text-yellow-500 hover:text-yellow-600 mr-2">
-                    ⭐ {message.stars.length}
-                  </button>
-                  <button onClick={() => handleReply(message.id)} className="text-blue-500 hover:text-blue-600">
-                    Reply
-                  </button>
-                </div>
-              </div>
+                message={message}
+                address={address}
+                handleReact={handleReact}
+                handleReply={handleReply}
+                scrollToMessage={scrollToMessage}
+                reactingStates={reactingStates}
+              />
             ))
           )}
           <div ref={messagesEndRef} />
