@@ -30,6 +30,16 @@ export const messagingABI = [
         "internalType": "string",
         "name": "name",
         "type": "string"
+      },
+      {
+        "internalType": "uint128",
+        "name": "date",
+        "type": "uint128"
+      },
+      {
+        "internalType": "string",
+        "name": "replying",
+        "type": "string"
       }
     ],
     "name": "sendMessage",
@@ -59,28 +69,21 @@ export const messagingABI = [
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "msg",
-        "type": "string"
+        "internalType": "uint64",
+        "name": "message_id",
+        "type": "uint64"
       }
     ],
-    "name": "setMessage",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getTest",
+    "name": "reactToMessage",
     "outputs": [
       {
-        "internalType": "string",
+        "internalType": "bool",
         "name": "",
-        "type": "string"
+        "type": "bool"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]
-export const messagingContractAddress = "0x60bfc3f31da46800918429763135c107b5042987";
+export const messagingContractAddress = "0x9b982a45751079f9559550d05b55f54aa55f4081";

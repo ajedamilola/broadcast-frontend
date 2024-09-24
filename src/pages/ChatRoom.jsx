@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useState, useRef } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useState, useRef, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import { Contract } from "ethers";
 import { messagingABI, messagingContractAddress } from "../constants";
@@ -7,19 +7,11 @@ import { Report } from "notiflix";
 
 const ChatRoom = () => {
   const [newMessage, setNewMessage] = useState("");
-  /**
- * @typedef {Object} EthersData
- * @property {import('ethers').BrowserProvider} provider - The Ethereum provider
- * @property {import('ethers').Signer} signer - The Ethereum signer
- */
-
-  /**
-   * @type {{ethersData:EthersData,setEthersData:(EthersData:EthersData)=>void,address:String}}
-   */
   const { ethersData, address } = useContext(AppContext)
-  const contract = new Contract(messagingContractAddress, messagingABI, ethersData?.signer)
+  const contract = useMemo(() => new Contract(messagingContractAddress, messagingABI, ethersData?.signer), [ethersData?.signer])
   const [fetching, setFetching] = useState(false)
   const [sending, setSending] = useState(false)
+  const [replying, setReplying] = useState(null)
   const messagesEndRef = useRef(null)
 
   const [messages, setMessages] = useState([
@@ -27,16 +19,7 @@ const ChatRoom = () => {
       id: 1,
       text: "Hey there!",
       sender: "user",
-    },
-    {
-      id: 2,
-      text: "Hi! How are you?",
-      sender: "other",
-    },
-    {
-      id: 3,
-      text: "I'm doing great, thanks! ",
-      sender: "user",
+      stars: [],
     },
   ]);
 
@@ -49,19 +32,41 @@ const ChatRoom = () => {
     if (newMessage.trim() === "") return;
     try {
       setSending(true);
-      const rawMessages = await contract.sendMessage(newMessage, localStorage.getItem("username") || "Anonymous")
+      const currentDate = Math.floor(Date.now() / 1000);
+      const rawMessages = await contract.sendMessage(newMessage, localStorage.getItem("username") || "Anonymous", currentDate, replying);
       await rawMessages.wait()
       setMessages([
         ...messages,
-        { id: messages.length + 1, text: newMessage, sender: localStorage.getItem("username") || "Anonymous", address: await ethersData.signer.getAddress() },
+        { id: messages.length + 1, text: newMessage, sender: localStorage.getItem("username") || "Anonymous", address: await ethersData.signer.getAddress(), stars: [] },
       ]);
       setNewMessage("");
+      setReplying(null);
     } catch (error) {
       console.log(error)
       Report.failure("Unable to send message")
     } finally {
       setSending(false);
     }
+  };
+
+  const handleReact = async (messageId) => {
+    try {
+      await contract.reactToMessage(messageId);
+      setMessages(messages.map(msg =>
+        msg.id === messageId ? { ...msg, stars: [...msg.stars, 1] } : msg
+      ));
+    } catch (error) {
+      console.log(error);
+      Report.failure("Unable to react to message");
+    }
+  };
+
+  const handleReply = (messageId) => {
+    setReplying(messageId);
+  };
+
+  const cancelReply = () => {
+    setReplying(null);
   };
 
   const InitData = useCallback(async () => {
@@ -74,7 +79,9 @@ const ChatRoom = () => {
         id: rawMessages.indexOf(r),
         text: r.content,
         sender: r.name,
-        address: r.sender
+        address: r.sender,
+        stars: r.stars || [],
+
       })))
 
     } catch (error) {
@@ -83,8 +90,7 @@ const ChatRoom = () => {
     } finally {
       setSilentFetch(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [contract])
 
   useLayoutEffect(() => {
     if (!ethersData || !ethersData?.signer || !ethersData?.provider) {
@@ -136,37 +142,57 @@ const ChatRoom = () => {
                 >
                   {message.text}
                 </div>
+                <div className="mt-1 text-sm">
+                  <button onClick={() => handleReact(message.id)} className="text-yellow-500 hover:text-yellow-600 mr-2">
+                    ⭐ {message.stars.length}
+                  </button>
+                  <button onClick={() => handleReply(message.id)} className="text-blue-500 hover:text-blue-600">
+                    Reply
+                  </button>
+                </div>
               </div>
             ))
           )}
           <div ref={messagesEndRef} />
         </div>
 
-        <form onSubmit={handleSend} className='flex p-3'>
-          <input
-            type='text'
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            className='flex-1 border px-4 py-2 outline-none'
-            placeholder='Type a message...'
-            disabled={sending}
-          />
+        <form onSubmit={handleSend} className='flex flex-col p-3'>
+          {replying !== null && (
+            <div className="bg-gray-100 p-2 mb-2 rounded-lg flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                Replying to: {messages.find(m => m.id === replying)?.text.substring(0, 50)}...
+              </div>
+              <button onClick={cancelReply} className="text-red-500 hover:text-red-600">
+                Cancel
+              </button>
+            </div>
+          )}
+          <div className="flex">
+            <input
+              type='text'
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className='flex-1 border px-4 py-2 outline-none'
+              placeholder='Type a message...'
+              disabled={sending}
+            />
 
-          <button
-            type="submit"
-            className={`bg-primary px-4 py-2 text-white ${sending ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={sending}
-          >
-            {sending ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Sending...
-              </span>
-            ) : 'Send'}
-          </button>
+            <button
+              type="submit"
+              className={`bg-primary px-4 py-2 text-white ${sending ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={sending}
+            >
+              {sending ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Sending...
+                </span>
+              ) : 'Send'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
