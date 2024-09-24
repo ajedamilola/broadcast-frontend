@@ -9,7 +9,7 @@ import Lottie from "lottie-react"
 import gift from "../lottie/gift.json";
 import gift_idle from "../lottie/gift_idle.json";
 
-const Message = ({ message, address, handleReact, handleReply, scrollToMessage, reactingStates }) => {
+const Message = ({ message, address, handleReact, handleReply, scrollToMessage, reactingStates, messages }) => {
   const [showGiftAnimation, setShowGiftAnimation] = useState(false);
 
   const onReact = async () => {
@@ -18,16 +18,18 @@ const Message = ({ message, address, handleReact, handleReply, scrollToMessage, 
     setTimeout(() => setShowGiftAnimation(false), 3000); // Adjust time based on your animation duration
   };
 
-  return (
+  const replying = message.replying && messages.find(m => m.id == message.replying)
+
+  return message.id != 0 && (
     <div
       className={`mb-8 ${message.address === address ? "text-right" : "text-left"}`}
     >
-      {message.replying && (
+      {message.replying && message.replying !== "0" && (
         <div
           className="text-sm text-gray-500 mb-1 cursor-pointer hover:underline"
           onClick={() => scrollToMessage(parseInt(message.replying))}
         >
-          Replying to: <span className="font-semibold">{message.replyingText}</span>
+          Replying to: <span className="font-semibold">{replying.text.substring(0, 50)}{replying.text.length >= 50 && "..."}</span>
         </div>
       )}
       <div className="ms-auto">
@@ -108,6 +110,7 @@ const ChatRoom = () => {
     try {
       setSending(true);
       const currentDate = Math.floor(Number(Date.now() / 1000));
+      console.log(newMessage, localStorage.getItem("username") || "Anonymous", currentDate, replying)
       const rawMessages = await contract.sendMessage(newMessage, localStorage.getItem("username") || "Anonymous", currentDate, replying);
       await rawMessages.wait()
       setMessages([
@@ -213,6 +216,7 @@ const ChatRoom = () => {
           ) : (
             messages.map((message) => (
               <Message
+                messages={messages}
                 key={message.id}
                 message={message}
                 address={address}

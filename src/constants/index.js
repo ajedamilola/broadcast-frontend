@@ -87,4 +87,4 @@ export const messagingABI = [
   }
 ]
 
-export const messagingContractAddress = "0x9b982a45751079f9559550d05b55f54aa55f4081";
+export const messagingContractAddress = "0xc5af4fdeb6adb5b8b668ec94e5e63162a9ab854c";
