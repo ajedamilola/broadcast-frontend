@@ -86,4 +86,5 @@ export const messagingABI = [
     "type": "function"
   }
 ]
+
 export const messagingContractAddress = "0x9b982a45751079f9559550d05b55f54aa55f4081";

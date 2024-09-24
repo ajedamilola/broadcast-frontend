@@ -11,13 +11,14 @@ const ChatRoom = () => {
   const contract = useMemo(() => new Contract(messagingContractAddress, messagingABI, ethersData?.signer), [ethersData?.signer])
   const [fetching, setFetching] = useState(false)
   const [sending, setSending] = useState(false)
-  const [replying, setReplying] = useState(null)
+  const [replying, setReplying] = useState("")
   const messagesEndRef = useRef(null)
+  const messageRefs = useRef({})
 
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "Hey there!",
+      text: "Hey there 👋, this application is still loading 🌚",
       sender: "user",
       stars: [],
     },
@@ -27,17 +28,19 @@ const ChatRoom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  console.log(messages);
+
   const handleSend = async (e) => {
     e.preventDefault();
     if (newMessage.trim() === "") return;
     try {
       setSending(true);
-      const currentDate = Math.floor(Date.now() / 1000);
+      const currentDate = Math.floor(Number(Date.now() / 1000));
       const rawMessages = await contract.sendMessage(newMessage, localStorage.getItem("username") || "Anonymous", currentDate, replying);
       await rawMessages.wait()
       setMessages([
         ...messages,
-        { id: messages.length + 1, text: newMessage, sender: localStorage.getItem("username") || "Anonymous", address: await ethersData.signer.getAddress(), stars: [] },
+        { id: messages.length + 1, text: newMessage, sender: localStorage.getItem("username") || "Anonymous", address: await ethersData.signer.getAddress(), stars: [], replying: replying },
       ]);
       setNewMessage("");
       setReplying(null);
@@ -51,6 +54,8 @@ const ChatRoom = () => {
 
   const handleReact = async (messageId) => {
     try {
+      const message = messages.find(m => m.id == messageId);
+      if (message.stars.includes(address)) return
       await contract.reactToMessage(messageId);
       setMessages(messages.map(msg =>
         msg.id === messageId ? { ...msg, stars: [...msg.stars, 1] } : msg
@@ -62,11 +67,15 @@ const ChatRoom = () => {
   };
 
   const handleReply = (messageId) => {
-    setReplying(messageId);
+    setReplying(messageId.toString());
   };
 
   const cancelReply = () => {
-    setReplying(null);
+    setReplying("");
+  };
+
+  const scrollToMessage = (messageId) => {
+    messageRefs.current[messageId]?.scrollIntoView({ behavior: "smooth" });
   };
 
   const InitData = useCallback(async () => {
@@ -81,7 +90,7 @@ const ChatRoom = () => {
         sender: r.name,
         address: r.sender,
         stars: r.stars || [],
-
+        replying: r.replying || "0",
       })))
 
     } catch (error) {
@@ -128,9 +137,18 @@ const ChatRoom = () => {
             messages.map((message) => (
               <div
                 key={message.id}
+                ref={el => messageRefs.current[message.id] = el}
                 className={`mb-4 ${message.address === address ? "text-right" : "text-left"
                   }`}
               >
+                {message.replying && (
+                  <div
+                    className="text-sm text-gray-500 mb-1 cursor-pointer hover:underline"
+                    onClick={() => scrollToMessage(parseInt(message.replying))}
+                  >
+                    Replying to: <b>{messages.find(m => m.id == message.replying)?.text.substring(0, 50)}...</b>
+                  </div>
+                )}
                 {message.address !== address && (
                   <div className="text-sm text-gray-500 mb-1">{message.sender}</div>
                 )}
@@ -157,10 +175,10 @@ const ChatRoom = () => {
         </div>
 
         <form onSubmit={handleSend} className='flex flex-col p-3'>
-          {replying !== null && (
+          {replying && (
             <div className="bg-gray-100 p-2 mb-2 rounded-lg flex justify-between items-center">
               <div className="text-sm text-gray-600">
-                Replying to: {messages.find(m => m.id === replying)?.text.substring(0, 50)}...
+                Replying to: <b>{messages.find(m => m.id == replying)?.text.substring(0, 50)}...</b>
               </div>
               <button onClick={cancelReply} className="text-red-500 hover:text-red-600">
                 Cancel

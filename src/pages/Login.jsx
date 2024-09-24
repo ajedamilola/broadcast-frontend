@@ -1,9 +1,8 @@
 import { useContext, useLayoutEffect, useState } from "react";
 import { AppContext } from "../AppContext";
 import { Report } from "notiflix";
-import { BrowserProvider, hexlify, ethers, toBeHex } from "ethers";
+import { BrowserProvider } from "ethers";
 import { useNavigate } from "react-router-dom";
-import { Network } from "ethers";
 
 const Login = () => {
   const { setEthersData, ethersData, setAddress } = useContext(AppContext);
@@ -20,16 +19,40 @@ const Login = () => {
     setConnecting(true);
     if (window.ethereum) {
       try {
-        const provider = new BrowserProvider(window.ethereum);
+        let provider = new BrowserProvider(window.ethereum);
         const network = await provider.getNetwork();
+
         if (network.chainId != 421614) {
-          Report.warning(
-            "Network Not found",
-            "Arbitrum testnet not found please add it or switch to it"
-          );
-          setConnecting(false);
-          return;
+          try {
+            await window.ethereum.request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x66eee' }], // 421614 in hexadecimal
+            });
+          } catch (switchError) {
+            // This error code indicates that the chain has not been added to MetaMask.
+            if (switchError.code === 4902) {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0x66eee',
+                  chainName: 'Arbitrum Sepolia',
+                  nativeCurrency: {
+                    name: 'Ethereum',
+                    symbol: 'ETH',
+                    decimals: 18
+                  },
+                  rpcUrls: ['https://sepolia-rollup.arbitrum.io/rpc'],
+                  blockExplorerUrls: ['https://sepolia.arbiscan.io/']
+                }],
+              });
+            } else {
+              throw switchError;
+            }
+          }
+          // After switching or adding the network, reinitialize the provider
+          provider = new BrowserProvider(window.ethereum);
         }
+
         const signer = await provider.getSigner();
         setEthersData({
           provider,
@@ -39,18 +62,19 @@ const Login = () => {
       } catch (error) {
         Report.failure(
           "An Error occurred",
-          "Unable to signin into wallet please try again"
+          "Unable to sign in to wallet. Please try again."
         );
         console.log(error);
       }
     } else {
       Report.warning(
         "Unable to connect wallet",
-        "Try getting a wallet plugin like metamask to proceed"
+        "Try getting a wallet plugin like MetaMask to proceed"
       );
     }
     setConnecting(false);
   }
+
   return (
     <div className='font-montserrat h-[100dvh] flex items-center justify-center bg-gradient-to-r from-[#0389c9] to-[#03a9f4]'>
       <div className='bg-white p-8 rounded-lg shadow-2xl transform hover:scale-105 transition-transform duration-300'>
